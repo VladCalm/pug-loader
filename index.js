@@ -133,7 +133,7 @@ module.exports = function(source) {
 	run();
 	function run() {
 		try {
-			var tmplFunc = pug.compileClient(source, {
+			var options = {
 				filename: req,
 				doctype: query.doctype || "html",
 				pretty: query.pretty,
@@ -145,7 +145,9 @@ module.exports = function(source) {
 				plugins: [
 					plugin
 				].concat(query.plugins || [])
-			});
+			};
+
+			var tmplFunc = (!query.static) ? pug.compileClient(source, options) : pug.compile(source, options)
 		} catch(e) {
 			if(missingFileMode) {
 				// Ignore, it'll continue after async action
@@ -154,7 +156,12 @@ module.exports = function(source) {
 			}
 			throw e;
 		}
-		var runtime = "var pug = require(" + loaderUtils.stringifyRequest(loaderContext, "!" + modulePaths.runtime) + ");\n\n";
-		loaderContext.callback(null, runtime + tmplFunc.toString() + ";\nmodule.exports = template;");
+
+		if (!query.static) {
+			var runtime = "var pug = require(" + loaderUtils.stringifyRequest(loaderContext, "!" + modulePaths.runtime) + ");\n\n";
+			loaderContext.callback(null, runtime + tmplFunc.toString() + ";\nmodule.exports = template;");
+		} else {
+			loaderContext.callback(null, tmplFunc());
+		}
 	}
 }
